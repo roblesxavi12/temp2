@@ -103,6 +103,7 @@ int main(void)
   //Params* p2 =(Params*)malloc(sizeof(Params));
   // Registro de dispositivo -> 0x72
   /*
+   * DOCS: https://cdn.sparkfun.com/assets/learn_tutorials/3/2/1/Avago-APDS-9960-datasheet.pdf
    	0x96 RDATAL R Low byte of red channel data 0x00
     0x97 - RDATAH R High byte of red channel data - 0x00
 	0x98 - GDATAL R Low byte of green channel data - 0x00
