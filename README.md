@@ -41,10 +41,11 @@ static void LedBlink(void *pParameters)
 	//params->ID = 10;
 	bool check;
 	//check = BSP_I2C_ReadRegister((uint8_t)0x92, &params->ID);
+	check = BSP_I2C_WriteRegister((uint8_t)0x97, (uint8_t)0x00); // Prueba de reset del registro
 	check = BSP_I2C_ReadRegister((uint8_t)0x97, &params->r);
 	check = BSP_I2C_ReadRegister((uint8_t)0x98, &params->g);
 	check = BSP_I2C_ReadRegister((uint8_t)0x9A, &params->b);
-	//printf("Error: %d\n", check);
+	printf("Error: %d\n", check);
 	//check = 0;
 	printf("red: %d\n", params->r);
 	//printf("green: %d\n", params->g);
