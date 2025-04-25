@@ -1,6 +1,3 @@
-# temp2
-
-
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -26,9 +23,10 @@
  * @param *pParameters pointer to parameters passed to the function
  ******************************************************************************/
 typedef struct {
-	uint32_t ID;
-	QueueHandle_t* queue1;
-	QueueHandle_t* queue2;
+	uint8_t ID;
+	unsigned short r, g, b;
+	//QueueHandle_t* queue1;
+	//QueueHandle_t* queue2;
 }Params;
 static void LedBlink(void *pParameters)
 {
@@ -36,9 +34,19 @@ static void LedBlink(void *pParameters)
   //int* pParameters2 = (int*)pParameters;
 
   Params* params = (Params*)pParameters;
-  uint32_t LED = params->ID, del = 5000;
+  uint32_t del = 500;
 
-
+  for (;;) {
+  			//BSP_LedToggle(LED);
+	  	  	//params->ID = 10;
+	  	  	bool check;
+	  	  	check = BSP_I2C_ReadRegister((uint8_t)0x92, &params->ID);
+	  	  	printf("Error: %d\n", check);
+  			printf("ID: %d\n", params->ID);
+  			vTaskDelay(pdMS_TO_TICKS(del));
+  			//xQueueSend( params->queue1, &del, 0 );
+  }
+  /*
   if (LED == 1) {
 	  del = 2000;
 	  xQueueSend( params->queue1, &del, (TickType_t)10 );
@@ -65,7 +73,7 @@ static void LedBlink(void *pParameters)
 			xQueueSend( params->queue2, &del, 0 );
 		}
 	  }
-  }
+  }*/
 }
 
 /***************************************************************************//**
@@ -85,22 +93,24 @@ int main(void)
   BSP_LedSet(1);
 
   Params* p1 =(Params*)malloc(sizeof(Params));
-  Params* p2 =(Params*)malloc(sizeof(Params));
-  p1->ID = 0;
-  p2->ID = 1;
+  //Params* p2 =(Params*)malloc(sizeof(Params));
+  // Registro de dispositivo -> 0x72
+  BSP_I2C_Init((uint8_t)0x72);
+  p1->ID = 1;
+  //p2->ID = 1;
   /*Create two task for blinking leds*/
-  p1->queue1 = xQueueCreate(2, sizeof(int));
-  p1->queue2 = xQueueCreate(2, sizeof(int));
-  p2->queue1 = p1->queue1;
-  p2->queue2 = p1->queue2;
+  //p1->queue1 = xQueueCreate(2, sizeof(int));
+  //p1->queue2 = xQueueCreate(2, sizeof(int));
+  //p2->queue1 = p1->queue1;
+  //p2->queue2 = p1->queue2;
 
 
   xTaskCreate(LedBlink, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, (void*)p1, TASK_PRIORITY, NULL);
-  xTaskCreate(LedBlink, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, (void*)p2, TASK_PRIORITY, NULL);
+  //xTaskCreate(LedBlink, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, (void*)p2, TASK_PRIORITY, NULL);
 
 
   /*Start FreeRTOS Scheduler*/
   vTaskStartScheduler();
-  free(p1); free(p2);
+  free(p1);
   return 0;
 }
