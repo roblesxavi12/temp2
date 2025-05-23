@@ -218,3 +218,42 @@ bool setAmbientLightIntEnable(uint8_t enable)
 
     return true;
 }
+
+bool readAmbientLight(uint16_t* val)
+{
+    uint8_t val_byte;
+    val[0] = 0;
+
+    /* Read value from clear channel, low byte register */
+    if( !BSP_I2C_ReadRegister((uint8_t)APDS9960_CDATAL, &val_byte) ) {
+        return false;
+    }
+    val[0] = val_byte;
+
+    /* Read value from clear channel, high byte register */
+    if( !BSP_I2C_ReadRegister((uint8_t)APDS9960_CDATAH, &val_byte) ) {
+        return false;
+    }
+    val[0] = val[0] + ((uint16_t)val_byte << 8);
+
+    return true;
+}
+/*
+bool readRedLight(uint16_t val)
+{
+    uint8_t val_byte;
+    val = 0;
+
+    if( !wireReadDataByte(APDS9960_RDATAL, val_byte) ) {
+        return false;
+    }
+    val = val_byte;
+
+    if( !wireReadDataByte(APDS9960_RDATAH, val_byte) ) {
+        return false;
+    }
+    val = val + ((uint16_t)val_byte << 8);
+
+    return true;
+}
+ */

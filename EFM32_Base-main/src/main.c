@@ -27,63 +27,36 @@
 typedef struct {
 	uint8_t ID;
 	uint8_t r, g, b;
-	//QueueHandle_t* queue1;
-	//QueueHandle_t* queue2;
 }Params;
-static void LedBlink(void *pParameters)
+
+static void LedBlink()
 {
-  //(void) pParameters;
-  //int* pParameters2 = (int*)pParameters;
-  uint32_t del = 500;
+	uint8_t aux;
 
-  for (;;) {
-	//BSP_LedToggle(LED);
-	//params->ID = 10;
-	bool check;
-	uint16_t ambLight;
+	if( !BSP_I2C_ReadRegister((uint8_t)APDS9960_ENABLE, &aux) ) {
+		return;
+	}
 
-	uint8_t a;
-	uint8_t b;
+	printf("%d\n", aux);
 
-	uint8_t* temp = (void*)&ambLight;
+	vTaskDelay(pdMS_TO_TICKS(1000));
 
-	check = BSP_I2C_ReadRegister((uint8_t)APDS9960_CDATAL, &b);
-	check = BSP_I2C_ReadRegister((uint8_t)APDS9960_CDATAH, &a);
+	if( !BSP_I2C_WriteRegister((uint8_t)APDS9960_ENABLE, (aux | 0x80) & 0xF7)  ) {
+		return;
+	}
 
-	printf("Error: %d\n", check);
-	printf("Ambient light: %d\n", a);
+	uint16_t al = 255;
 
-	vTaskDelay(pdMS_TO_TICKS(del));
-	//xQueueSend( params->queue1, &del, 0 );
-  }
-  /*
-  if (LED == 1) {
-	  del = 2000;
-	  xQueueSend( params->queue1, &del, (TickType_t)10 );
-
-	  for (;;) {
-		if( xQueueReceive( params->queue2, &del, (TickType_t)10 ) == pdPASS )
+	for (;;) {
+		if(!readAmbientLight(&al))
 		{
-			BSP_LedToggle(LED);
-			printf("Task %d\n", LED);
-			vTaskDelay(pdMS_TO_TICKS(del));
-			xQueueSend( params->queue1, &del, 0 );
+			printf("Error!!\n");
 		}
-	  }
-  }
-  else {
-	  xQueueSend( params->queue2, &del, (TickType_t)10 );
-
-	  for (;;) {
-		if( xQueueReceive( params->queue1, &del, (TickType_t)10 ) == pdPASS )
+		else
 		{
-			BSP_LedToggle(LED);
-			printf("Task %d\n", LED);
-			vTaskDelay(pdMS_TO_TICKS(del));
-			xQueueSend( params->queue2, &del, 0 );
+			printf("Ambient light: %d\n", al);
 		}
-	  }
-  }*/
+	}
 }
 
 /***************************************************************************//**
@@ -102,7 +75,7 @@ int main(void)
   BSP_LedSet(0);
   BSP_LedSet(1);
 
-  Params* p1 =(Params*)malloc(sizeof(Params));
+  // Params* p1 =(Params*)malloc(sizeof(Params));
   //Params* p2 =(Params*)malloc(sizeof(Params));
   // Registro de dispositivo -> 0x72
   /*
@@ -117,14 +90,12 @@ int main(void)
 	0x9E POFFSET_DL R/W Proximity offset for DOWN and LEFT photodiodes 0x00
 
    */
-  printf("Error: %d\n", Init());
 
-  setAmbientLightIntEnable(0);
-
+  /*
   p1->ID = 1;
   p1->r = 0;
   p1->g = 0;
-  p1->b = 0;
+  p1->b = 0;*/
   //p2->ID = 1;
   /*Create two task for blinking leds*/
   //p1->queue1 = xQueueCreate(2, sizeof(int));
@@ -132,13 +103,14 @@ int main(void)
   //p2->queue1 = p1->queue1;
   //p2->queue2 = p1->queue2;
 
+  printf("Error: %d\n", Init());
+  setAmbientLightIntEnable(0);
 
-  xTaskCreate(LedBlink, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, (void*)p1, TASK_PRIORITY, NULL);
+  xTaskCreate(LedBlink, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
   //xTaskCreate(LedBlink, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, (void*)p2, TASK_PRIORITY, NULL);
-
 
   /*Start FreeRTOS Scheduler*/
   vTaskStartScheduler();
-  free(p1);
+  // free(p1);
   return 0;
 }
