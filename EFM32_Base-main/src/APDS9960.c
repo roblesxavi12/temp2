@@ -14,10 +14,8 @@ bool Init()
     if( !(data[0] == APDS9960_ID_1 ) ) //|| data[0] == APDS9960_ID_2) ) {
     	return false;
 
-    /* Set ENABLE register to 0 (disable all features) */
-    if( !BSP_I2C_WriteRegister((uint8_t)APDS9960_ENABLE, (uint8_t)0x7F) ) {
-        return false;
-    }
+    // Set ENABLE register to 0 (disable all features)
+    if(!setMode(ALL, OFF)) return false;
 
     /* Set default values for ambient light and proximity registers */
     if( !BSP_I2C_WriteRegister((uint8_t)APDS9960_ATIME, (uint8_t)DEFAULT_ATIME) ) {
@@ -82,6 +80,84 @@ bool Init()
     }
 
     return true;
+}
+
+bool enableLightSensor(bool interrupts)
+{
+    if(!setAmbientLightGain(DEFAULT_AGAIN))
+        return false;
+
+    if( interrupts ) {
+        if( !setAmbientLightIntEnable(1) )
+            return false;
+    }
+    else {
+        if( !setAmbientLightIntEnable(0) )
+            return false;
+    }
+    if(!enablePower())
+        return false;
+
+
+    if(!setMode(AMBIENT_LIGHT, 1))
+        return false;
+
+    return true;
+}
+
+bool enablePower()
+{
+    if( !setMode(POWER, 1) ) {
+        return false;
+    }
+
+    return true;
+}
+
+bool setMode(uint8_t mode, uint8_t enable)
+{
+    uint8_t reg_val;
+
+    /* Read current ENABLE register */
+    reg_val = getMode();
+    if( reg_val == ERROR ) {
+        return false;
+    }
+
+    /* Change bit(s) in ENABLE register */
+    enable = enable & 0x01;
+    if( ( mode >= 0  ) && ( mode <= 6 )) {
+        if (enable) {
+            reg_val |= (1 << mode);
+        } else {
+            reg_val &= ~(1 << mode);
+        }
+    } else if( mode == ALL ) {
+        if (enable) {
+            reg_val = 0x7F;
+        } else {
+            reg_val = 0x00;
+        }
+    }
+
+    /* Write value back to ENABLE register */
+    if( !BSP_I2C_WriteRegister(APDS9960_ENABLE, reg_val) ) {
+        return false;
+    }
+
+    return true;
+}
+
+uint8_t getMode()
+{
+    uint8_t enable_value;
+
+    /* Read current ENABLE register */
+    if( !BSP_I2C_ReadRegister(APDS9960_ENABLE, &enable_value) ) {
+        return ERROR;
+    }
+
+    return enable_value;
 }
 
 bool setProximityGain(uint8_t drive)
@@ -238,6 +314,67 @@ bool readAmbientLight(uint16_t* val)
 
     return true;
 }
+
+bool readRedLight(uint16_t* val)
+{
+    uint8_t val_byte;
+    val[0] = 0;
+
+    /* Read value from clear channel, low byte register */
+    if( !BSP_I2C_ReadRegister((uint8_t)APDS9960_RDATAL, &val_byte) ) {
+        return false;
+    }
+    val[0] = val_byte;
+
+    /* Read value from clear channel, high byte register */
+    if( !BSP_I2C_ReadRegister((uint8_t)APDS9960_RDATAH, &val_byte) ) {
+        return false;
+    }
+    val[0] = val[0] + ((uint16_t)val_byte << 8);
+
+    return true;
+}
+
+bool readGreenLight(uint16_t* val)
+{
+    uint8_t val_byte;
+    val[0] = 0;
+
+    /* Read value from clear channel, low byte register */
+    if( !BSP_I2C_ReadRegister((uint8_t)APDS9960_GDATAL, &val_byte) ) {
+        return false;
+    }
+    val[0] = val_byte;
+
+    /* Read value from clear channel, high byte register */
+    if( !BSP_I2C_ReadRegister((uint8_t)APDS9960_GDATAH, &val_byte) ) {
+        return false;
+    }
+    val[0] = val[0] + ((uint16_t)val_byte << 8);
+
+    return true;
+}
+
+bool readBlueLight(uint16_t* val)
+{
+    uint8_t val_byte;
+    val[0] = 0;
+
+    /* Read value from clear channel, low byte register */
+    if( !BSP_I2C_ReadRegister((uint8_t)APDS9960_BDATAL, &val_byte) ) {
+        return false;
+    }
+    val[0] = val_byte;
+
+    /* Read value from clear channel, high byte register */
+    if( !BSP_I2C_ReadRegister((uint8_t)APDS9960_BDATAH, &val_byte) ) {
+        return false;
+    }
+    val[0] = val[0] + ((uint16_t)val_byte << 8);
+
+    return true;
+}
+
 /*
 bool readRedLight(uint16_t val)
 {

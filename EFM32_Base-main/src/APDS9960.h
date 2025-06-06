@@ -178,5 +178,13 @@ bool setAmbientLightGain(uint8_t drive);
 bool setLightIntLowThreshold(uint16_t threshold);
 bool setLightIntHighThreshold(uint16_t threshold);
 bool setAmbientLightIntEnable(uint8_t enable);
-bool readAmbientLight(uint16_t* val);
 
+bool readAmbientLight(uint16_t* val);
+bool readRedLight(uint16_t* val);
+bool readGreenLight(uint16_t* val);
+bool readBlueLight(uint16_t* val);
+
+bool enableLightSensor(bool interrupts);
+bool enablePower();
+bool setMode(uint8_t mode, uint8_t enable);
+uint8_t getMode();

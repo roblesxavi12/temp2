@@ -29,34 +29,23 @@ typedef struct {
 	uint8_t r, g, b;
 }Params;
 
-static void LedBlink()
+static void readLightSensor()
 {
-	uint8_t aux;
+  vTaskDelay(pdMS_TO_TICKS(500)); // Esperar a que s'inicialitzi el xip
 
-	if( !BSP_I2C_ReadRegister((uint8_t)APDS9960_ENABLE, &aux) ) {
-		return;
-	}
+  uint16_t al = 255; //Total
+  uint16_t rl = 255; //Red
+  uint16_t gl = 255; //Green
+  uint16_t bl = 255; //Blue
 
-	printf("%d\n", aux);
+  while(true) {
+    if(!readAmbientLight(&al) || !readRedLight(&rl) || !readGreenLight(&gl) || !readBlueLight(&bl))
+      printf("Error llegint el registre de llum!!\n");
+    else
+      printf("Llum total, components RGB: %5d, %5d, %5d, %5d\n", al, rl, gl, bl);
 
-	vTaskDelay(pdMS_TO_TICKS(1000));
-
-	if( !BSP_I2C_WriteRegister((uint8_t)APDS9960_ENABLE, (aux | 0x80) & 0xF7)  ) {
-		return;
-	}
-
-	uint16_t al = 255;
-
-	for (;;) {
-		if(!readAmbientLight(&al))
-		{
-			printf("Error!!\n");
-		}
-		else
-		{
-			printf("Ambient light: %d\n", al);
-		}
-	}
+    vTaskDelay(pdMS_TO_TICKS(1000)); // Porsiaca esperem
+  }
 }
 
 /***************************************************************************//**
@@ -71,7 +60,7 @@ int main(void)
 
   /* Initialize LED driver */
   BSP_LedsInit();
-  /* Setting state oº	f leds*/
+  /* Setting state of leds*/
   BSP_LedSet(0);
   BSP_LedSet(1);
 
@@ -103,11 +92,17 @@ int main(void)
   //p2->queue1 = p1->queue1;
   //p2->queue2 = p1->queue2;
 
-  printf("Error: %d\n", Init());
-  setAmbientLightIntEnable(0);
+  if (!Init()) {
+    printf("Error a l'inicialitzar l'APDS9960!\n");
+    return 1;
+  }
+  if (!enableLightSensor(false)) {
+    printf("Error a l'inicialitzar en sensor de llum!\n");
+    return 1;
+  }
 
-  xTaskCreate(LedBlink, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
-  //xTaskCreate(LedBlink, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, (void*)p2, TASK_PRIORITY, NULL);
+  xTaskCreate(readLightSensor, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+  //xTaskCreate(readLightSensor, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, (void*)p2, TASK_PRIORITY, NULL);
 
   /*Start FreeRTOS Scheduler*/
   vTaskStartScheduler();
