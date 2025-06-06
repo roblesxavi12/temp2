@@ -24,10 +24,24 @@
  * @brief Simple task which is blinking led
  * @param *pParameters pointer to parameters passed to the function
  ******************************************************************************/
+QueueHandle_t q1;
 typedef struct {
 	uint8_t ID;
 	uint8_t r, g, b;
 }Params;
+
+static void printResults(uint16_t* _al, uint16_t* _rl, uint16_t* _gl, uint16_t* _bl){
+	uint16_t arr_recv[4];
+
+	while((xQueueReceive( q1, &arr_recv, (TickType_t)10 ) == pdPASS ));
+
+	// procesar valores y printarlos en caso de ser correctos
+	// imitar funcionamiento dl bucle vaya
+	if(!readAmbientLight(&_al) || !readRedLight(&_rl) || !readGreenLight(&_gl) || !readBlueLight(&_bl))
+		printf("Error llegint el registre de llum!!\n");
+	else
+		printf("Llum total, components RGB: %5d, %5d, %5d, %5d\n", al, rl, gl, bl);
+}
 
 static void readLightSensor()
 {
@@ -38,13 +52,21 @@ static void readLightSensor()
   uint16_t gl = 255; //Green
   uint16_t bl = 255; //Blue
 
+  uint16_t v_arr[4];
   while(true) {
+
     if(!readAmbientLight(&al) || !readRedLight(&rl) || !readGreenLight(&gl) || !readBlueLight(&bl))
       printf("Error llegint el registre de llum!!\n");
-    else
+    else{
+      v_arr[0] = al; v_arr[1] = rl; v_arr[2] = gl; v_arr[3] = bl;
+      int del = 1000;
+      xQueueSend(q1, &v_arr, 0);
       printf("Llum total, components RGB: %5d, %5d, %5d, %5d\n", al, rl, gl, bl);
+    }
+    // vTaskDelay(pdMS_TO_TICKS(1000)); // Porsiaca esperem
 
-    vTaskDelay(pdMS_TO_TICKS(1000)); // Porsiaca esperem
+
+	 vTaskDelay(pdMS_TO_TICKS(1000)); // Porsiaca esperem
   }
 }
 
@@ -101,7 +123,14 @@ int main(void)
     return 1;
   }
 
+  if((q1 = xQueueCreate(7, sizeof(int))) == NULL){
+	  printf("Error creando la cola\n");
+	  return -1;
+  }
+  // xQueueCreate(3, sizeof(int)); // 3 tasques
+
   xTaskCreate(readLightSensor, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+  xTaskCreate(printResults, (const char *), "PrintResults", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
   //xTaskCreate(readLightSensor, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, (void*)p2, TASK_PRIORITY, NULL);
 
   /*Start FreeRTOS Scheduler*/
