@@ -446,6 +446,8 @@ bool readBlueLight(uint16_t* val)
     return true;
 }
 
+/* --- A PARTIR DE AQUI ES SENSOR DE GESTOS --- */
+
 void resetGestureParameters()
 {
     gesture_data_.index = 0;
@@ -1073,6 +1075,94 @@ bool decodeGesture()
             gesture_motion_ = DIR_RIGHT;
         }
     } else {
+        return false;
+    }
+    
+    return true;
+}
+
+/* --- A PARTIR DE AQUI ES SENSOR DE PROXIMIDAD --- */
+
+bool setProximityGain(uint8_t drive)
+{
+    uint8_t val;
+    
+    /* Read value from CONTROL register */
+    if( !BSP_I2C_ReadRegister((uint8_t)APDS9960_CONTROL, val) ) {
+        return false;
+    }
+    
+    /* Set bits in register to given value */
+    drive &= 0b00000011;
+    drive = drive << 2;
+    val &= 0b11110011;
+    val |= drive;
+    
+    /* Write register value back into CONTROL register */
+    if( !BSP_I2C_WriteRegister((uint8_t)APDS9960_CONTROL, val) ) {
+        return false;
+    }
+    
+    return true;
+}
+
+bool enableProximitySensor(bool interrupts)
+{
+    /* Set default gain, LED, interrupts, enable power, and enable sensor */
+    if( !setProximityGain(DEFAULT_PGAIN) ) {
+        return false;
+    }
+    if( !setLEDDrive(DEFAULT_LDRIVE) ) {
+        return false;
+    }
+    if( interrupts ) {
+        if( !setProximityIntEnable(1) ) {
+            return false;
+        }
+    } else {
+        if( !setProximityIntEnable(0) ) {
+            return false;
+        }
+    }
+    if( !enablePower() ){
+        return false;
+    }
+    if( !setMode(PROXIMITY, 1) ) {
+        return false;
+    }
+    
+    return true;
+}
+
+bool setProximityIntEnable(uint8_t enable)
+{
+    uint8_t val;
+    
+    /* Read value from ENABLE register */
+    if( !BSP_I2C_ReadRegister((uint8_t)APDS9960_ENABLE, val) ) {
+        return false;
+    }
+    
+    /* Set bits in register to given value */
+    enable &= 0b00000001;
+    enable = enable << 5;
+    val &= 0b11011111;
+    val |= enable;
+    
+    /* Write register value back into ENABLE register */
+    if( !BSP_I2C_WriteRegister((uint8_t)APDS9960_ENABLE, val) ) {
+        return false;
+    }
+    
+    return true;
+}
+
+bool readProximity(uint8_t &val)
+{
+    val = 0;
+    
+    /* Read value from proximity data register */
+    if( !BSP_I2C_ReadRegister((uint8_t)APDS9960_PDATA, val) ) {
         return false;
     }
     

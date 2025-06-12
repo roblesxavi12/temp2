@@ -177,6 +177,7 @@
 #define ENABLE_LIGHT_ERROR -2
 #define ENABLE_PROX_ERROR -3
 #define ENABLE_GEST_ERROR -4
+#define READ_PROX_DATA_ERROR -6
 
 #define ERROR_CREATING_XQUEUE -5
 
@@ -234,6 +235,8 @@ bool enablePower();
 bool setMode(uint8_t mode, uint8_t enable);
 uint8_t getMode();
 
+
+/* Gesture sensor */
 bool enableGestureSensor(bool interrupts);
 bool setLEDBoost(uint8_t boost);
 void resetGestureParameters();
@@ -248,3 +251,9 @@ bool isGestureAvailable();
 int readGesture();
 bool processGestureData();
 bool decodeGesture();
+
+/* Proximity sensor */
+bool setProximityGain(uint8_t drive);
+bool enableProximitySensor(bool interrupts);
+bool setProximityIntEnable(uint8_t enable);
+bool readProximity(uint8_t &val);
