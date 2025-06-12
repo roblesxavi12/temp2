@@ -178,6 +178,8 @@
 #define ENABLE_PROX_ERROR -3
 #define ENABLE_GEST_ERROR -4
 
+#define ERROR_CREATING_XQUEUE -5
+
 /*Structures*/
 typedef struct gesture_data_type {
     uint8_t u_data[32];

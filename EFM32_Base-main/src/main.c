@@ -34,66 +34,85 @@ typedef struct {
 }Params;
 
 uint8_t isr_flag = 0;
-
+char buf[MAX_STRING_SIZE];
+char buf2[MAX_STRING_SIZE];
 
 static void handleGesture(){
+  
   if ( isGestureAvailable() ) {
     switch ( readGesture() ) {
       case DIR_UP:
         printf("UP\n");
+        strcpy(buf, "UP", MAX_STRING_SIZE);
         break;
       case DIR_DOWN:
         printf("DOWN\n");
+        strcpy(buf, "DOWN", MAX_STRING_SIZE);
         break;
       case DIR_LEFT:
         printf("LEFT\n");
+        strcpy(buf, "LEFT", MAX_STRING_SIZE);
         break;
       case DIR_RIGHT:
         printf("RIGHT\n");
+        strcpy(buf, "RIGHT", MAX_STRING_SIZE);
         break;
       case DIR_NEAR:
         printf("NEAR\n");
+        strcpy(buf, "NEAR", MAX_STRING_SIZE);
         break;
       case DIR_FAR:
         printf("FAR\n");
+        strcpy(buf, "FAR", MAX_STRING_SIZE);
         break;
       default:
         printf("NONE\n");
+        strcpy(buf, "NONE", MAX_STRING_SIZE);
     }
+  } 
+  if (xQueueSend(q2, buf, pdMS_TO_TICKS(10)) != pdPASS) {
+        printf("Error al enviar string a la cola\n");
+        return errQUEUE_FULL;
   }
 }
 
 static void printGestureResults(){
-  return -1;
+  uint8_t i = 3;
+  
+  while(i != 0){
+    if(xQueueReceive( q2, buf2, (TickType_t)10 ) != pdPASS ){
+      printf("Error al recibir el dato de la cola\n");
+      return errQUEUE_EMPTY;
+    }
+    printf("Gesto recibido: %s\n", buf2);
+    vTaskDelay(pdMS_TO_TICKS(1000))
+    i--;
+  }
 }
 
 static void readGestureSensor(){
   // los delays se hacen en las funciones internas. Aqui se añade un pequeño delay solo
-  
-  while(1){
+  uint8_t i = 3;
+  while(i != 0){
     if( isr_flag == 1 ) {
       detachInterrupt(0); // FUNCION DE ARDUINO
       handleGesture();
       isr_flag = 0;
       attachInterrupt(0, interruptRoutine, FALLING); // FUNCION DE ARDUINO
     }
+    i--;
   }  
 }
 
 
 static void printLightResults(){
 	uint16_t arr_recv[4];
-
+  // Esto se deberia cambiar, los elementos se reciben de 1 en 1
 	while(1){
     if(xQueueReceive( q1, arr_recv, (TickType_t)10 ) == pdPASS )
       printf("Llum total, components RGB: %5d, %5d, %5d, %5d\n", arr_recv[0], arr_recv[1], arr_recv[2], arr_recv[3]);
     vTaskDelay(pdMS_TO_TICKS(1000))
-  }
-
-	if(!readAmbientLight(&_al) || !readRedLight(&_rl) || !readGreenLight(&_gl) || !readBlueLight(&_bl))
-		printf("Error llegint el registre de llum!!\n");
-	else
-		
+  }	
 }
 
 static void readLightSensor()
@@ -112,7 +131,10 @@ static void readLightSensor()
       printf("Error llegint el registre de llum!!\n");
     else{
       v_arr[0] = al; v_arr[1] = rl; v_arr[2] = gl; v_arr[3] = bl;
-      xQueueSend(q1, v_arr, 0);
+      if(xQueueSend(q1, v_arr, 0)!= pdPASS){
+        printf("Error enviando a la cola de ints\n");
+        return errQUEUE_FULL;
+      }
       // printf("Llum total, components RGB: %5d, %5d, %5d, %5d\n", al, rl, gl, bl);
     }
 	  vTaskDelay(pdMS_TO_TICKS(1000)); // Porsiaca esperem
@@ -174,18 +196,14 @@ int main(void)
 
   if((q1 = xQueueCreate(7, sizeof(uint16_t) * 4)) == NULL){ // cola light sensor
 	  printf("Error creando la cola de ints\n");
-	  return -1;
+	  return ERROR_CREATING_XQUEUE;
   }
 
   if((q2 = xQueueCreate(4, sizeof(char) * MAX_STRING_SIZE)) == NULL){ // cola gesture sensor
 	  printf("Error creando la cola de strings\n");
-	  return -1;
+	  return ERROR_CREATING_XQUEUE;
   }
 
-  if((q2 = xQueueCreate(7, sizeof(uint16_t) * 4)) == NULL){ // cola light sensor
-	  printf("Error creando la cola\n");
-	  return -1;
-  }
   /*
   if(!enableProximity(true)){
     printf("Error inicializando el sensor de proximidad\n");
@@ -202,6 +220,7 @@ int main(void)
   xTaskCreate(readLightSensor, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
   xTaskCreate(printLightResults, (const char *) "PrintResults", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
   xTaskCreate(readGestureSensor, (const char *) "gestureSensor", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+  xTaskCreate(printGestureResults, (const char *) "gestureResults", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
 
   /*Start FreeRTOS Scheduler*/
   vTaskStartScheduler();
