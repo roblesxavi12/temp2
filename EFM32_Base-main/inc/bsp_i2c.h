@@ -36,6 +36,8 @@ bool BSP_I2C_ReadRegister(uint8_t reg, uint8_t *val);
  */
 bool I2C_Test();
 
+bool BSP_I2C_ReadBlock(uint8_t reg, uint8_t *buffer, uint8_t len);
+
 
 
 

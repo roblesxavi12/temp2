@@ -15,32 +15,85 @@
 #include "bsp_i2c.h"
 
 #include "APDS9960.h"
-
+#include "String.h"
 
 #define STACK_SIZE_FOR_TASK    (configMINIMAL_STACK_SIZE + 10)
 #define TASK_PRIORITY          (tskIDLE_PRIORITY + 1)
+#define MAX_STRING_SIZE
 
 /***************************************************************************//**
  * @brief Simple task which is blinking led
  * @param *pParameters pointer to parameters passed to the function
  ******************************************************************************/
 QueueHandle_t q1;
+QueueHandle_t q2;
+
 typedef struct {
 	uint8_t ID;
 	uint8_t r, g, b;
 }Params;
 
-static void printResults(uint16_t* _al, uint16_t* _rl, uint16_t* _gl, uint16_t* _bl){
+uint8_t isr_flag = 0;
+
+
+static void handleGesture(){
+  if ( isGestureAvailable() ) {
+    switch ( readGesture() ) {
+      case DIR_UP:
+        printf("UP\n");
+        break;
+      case DIR_DOWN:
+        printf("DOWN\n");
+        break;
+      case DIR_LEFT:
+        printf("LEFT\n");
+        break;
+      case DIR_RIGHT:
+        printf("RIGHT\n");
+        break;
+      case DIR_NEAR:
+        printf("NEAR\n");
+        break;
+      case DIR_FAR:
+        printf("FAR\n");
+        break;
+      default:
+        printf("NONE\n");
+    }
+  }
+}
+
+static void printGestureResults(){
+  return -1;
+}
+
+static void readGestureSensor(){
+  // los delays se hacen en las funciones internas. Aqui se añade un pequeño delay solo
+  
+  while(1){
+    if( isr_flag == 1 ) {
+      detachInterrupt(0); // FUNCION DE ARDUINO
+      handleGesture();
+      isr_flag = 0;
+      attachInterrupt(0, interruptRoutine, FALLING); // FUNCION DE ARDUINO
+    }
+  }  
+}
+
+
+static void printLightResults(){
 	uint16_t arr_recv[4];
 
-	while((xQueueReceive( q1, &arr_recv, (TickType_t)10 ) == pdPASS ));
+	while(1){
+    if(xQueueReceive( q1, arr_recv, (TickType_t)10 ) == pdPASS )
+      printf("Llum total, components RGB: %5d, %5d, %5d, %5d\n", arr_recv[0], arr_recv[1], arr_recv[2], arr_recv[3]);
+    vTaskDelay(pdMS_TO_TICKS(1000))
+  }
 
-	// procesar valores y printarlos en caso de ser correctos
-	// imitar funcionamiento dl bucle vaya
 	if(!readAmbientLight(&_al) || !readRedLight(&_rl) || !readGreenLight(&_gl) || !readBlueLight(&_bl))
 		printf("Error llegint el registre de llum!!\n");
 	else
-		printf("Llum total, components RGB: %5d, %5d, %5d, %5d\n", al, rl, gl, bl);
+		
 }
 
 static void readLightSensor()
@@ -59,14 +112,10 @@ static void readLightSensor()
       printf("Error llegint el registre de llum!!\n");
     else{
       v_arr[0] = al; v_arr[1] = rl; v_arr[2] = gl; v_arr[3] = bl;
-      int del = 1000;
-      xQueueSend(q1, &v_arr, 0);
-      printf("Llum total, components RGB: %5d, %5d, %5d, %5d\n", al, rl, gl, bl);
+      xQueueSend(q1, v_arr, 0);
+      // printf("Llum total, components RGB: %5d, %5d, %5d, %5d\n", al, rl, gl, bl);
     }
-    // vTaskDelay(pdMS_TO_TICKS(1000)); // Porsiaca esperem
-
-
-	 vTaskDelay(pdMS_TO_TICKS(1000)); // Porsiaca esperem
+	  vTaskDelay(pdMS_TO_TICKS(1000)); // Porsiaca esperem
   }
 }
 
@@ -116,22 +165,43 @@ int main(void)
 
   if (!Init()) {
     printf("Error a l'inicialitzar l'APDS9960!\n");
-    return 1;
+    return INIT_ERROR;
   }
   if (!enableLightSensor(false)) {
     printf("Error a l'inicialitzar en sensor de llum!\n");
-    return 1;
+    return ENABLE_LIGHT_ERRROR;
   }
 
-  if((q1 = xQueueCreate(7, sizeof(int))) == NULL){
+  if((q1 = xQueueCreate(7, sizeof(uint16_t) * 4)) == NULL){ // cola light sensor
+	  printf("Error creando la cola de ints\n");
+	  return -1;
+  }
+
+  if((q2 = xQueueCreate(4, sizeof(char) * MAX_STRING_SIZE)) == NULL){ // cola gesture sensor
+	  printf("Error creando la cola de strings\n");
+	  return -1;
+  }
+
+  if((q2 = xQueueCreate(7, sizeof(uint16_t) * 4)) == NULL){ // cola light sensor
 	  printf("Error creando la cola\n");
 	  return -1;
+  }
+  /*
+  if(!enableProximity(true)){
+    printf("Error inicializando el sensor de proximidad\n");
+    return ENABLE_PROX_ERROR;
+  }
+  */
+
+  if(!enableGesture(true)){
+    printf("Error inicializando el sensor de gestos\n")
+    return ENABLE_GEST_ERROR
   }
   // xQueueCreate(3, sizeof(int)); // 3 tasques
 
   xTaskCreate(readLightSensor, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
-  xTaskCreate(printResults, (const char *), "PrintResults", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
-  //xTaskCreate(readLightSensor, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, (void*)p2, TASK_PRIORITY, NULL);
+  xTaskCreate(printLightResults, (const char *) "PrintResults", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+  xTaskCreate(readGestureSensor, (const char *) "gestureSensor", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
 
   /*Start FreeRTOS Scheduler*/
   vTaskStartScheduler();

@@ -1,3 +1,4 @@
+// https://github.com/sparkfun/SparkFun_APDS-9960_Sensor_Arduino_Library/blob/master/src/SparkFun_APDS9960.h
 #include <stdbool.h>
 #include <stdint.h>
 #include "bsp_i2c.h"
@@ -171,6 +172,48 @@
 #define DEFAULT_GCONF3          0       // All photodiodes active during gesture
 #define DEFAULT_GIEN            0       // Disable gesture interrupts
 
+/*Error codes*/
+#define INIT_ERROR -1
+#define ENABLE_LIGHT_ERROR -2
+#define ENABLE_PROX_ERROR -3
+#define ENABLE_GEST_ERROR -4
+
+/*Structures*/
+typedef struct gesture_data_type {
+    uint8_t u_data[32];
+    uint8_t d_data[32];
+    uint8_t l_data[32];
+    uint8_t r_data[32];
+    uint8_t index;
+    uint8_t total_gestures;
+    uint8_t in_threshold;
+    uint8_t out_threshold;
+} gesture_data_type;
+
+/*Direction definitions*/
+enum {
+  DIR_NONE,
+  DIR_LEFT,
+  DIR_RIGHT,
+  DIR_UP,
+  DIR_DOWN,
+  DIR_NEAR,
+  DIR_FAR,
+  DIR_ALL
+};
+
+/*Gesture data variables*/
+gesture_data_type gesture_data_;
+int gesture_ud_delta_;
+int gesture_lr_delta_;
+int gesture_ud_count_;
+int gesture_lr_count_;
+int gesture_near_count_;
+int gesture_far_count_;
+int gesture_state_;
+int gesture_motion_;
+
+/*Function definitions*/
 bool Init();
 bool setLEDDrive(uint8_t drive);
 bool setProximityGain(uint8_t drive);
@@ -188,3 +231,18 @@ bool enableLightSensor(bool interrupts);
 bool enablePower();
 bool setMode(uint8_t mode, uint8_t enable);
 uint8_t getMode();
+
+bool enableGestureSensor(bool interrupts);
+bool setLEDBoost(uint8_t boost);
+void resetGestureParameters();
+bool setGestureIntEnable(uint8_t enable);
+bool setGestureMode(uint8_t mode);
+bool setGestureEnterThresh(uint8_t threshold);
+bool setGestureExitThresh(uint8_t threshold);
+bool setGestureGain(uint8_t gain);
+bool setGestureLEDDrive(uint8_t drive);
+bool setGestureWaitTime(uint8_t time);
+bool isGestureAvailable();
+int readGesture();
+bool processGestureData();
+bool decodeGesture();
